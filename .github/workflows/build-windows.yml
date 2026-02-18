@@ -17,24 +17,25 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-            autoconf automake libtool pkg-config \
-            libcurl4-openssl-dev libssl-dev libzip-dev \
-            libusb-1.0-0-dev libimobiledevice-dev \
-            libplist-dev libirecovery-1.0-dev \
-            gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+            cmake ninja-build \
+            gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 \
+            libssl-dev libzip-dev libcurl4-openssl-dev \
+            libusb-1.0-0-dev
 
-      - name: Configure for Windows
+      - name: Configure with CMake
         run: |
-          ./bootstrap
-          ./configure --host=x86_64-w64-mingw32 \
-            --enable-static --disable-shared \
-            PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/lib/pkgconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/Toolchain-mingw64.cmake \
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: make -j$(nproc)
+        run: |
+          cd build
+          make -j$(nproc)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: futurerestore-windows
-          path: futurerestore/futurerestore.exe
+          path: build/futurerestore/futurerestore.exe
