@@ -25,7 +25,7 @@ jobs:
 
       - name: Configure for Windows
         run: |
-          ./autogen.sh
+          ./bootstrap
           ./configure --host=x86_64-w64-mingw32 \
             --enable-static --disable-shared \
             PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/lib/pkgconfig
