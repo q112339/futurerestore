@@ -17,61 +17,66 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - name: Checkout 源码
+      # 1. 拉取你仓库的futurerestore主源码
+      - name: Checkout futurerestore 主源码
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      # 2. 配置MSYS2环境
       - name: 配置 MSYS2 环境
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
           install: >
-            git make autoconf automake libtool pkg-config curl tar gzip file
+            make autoconf automake libtool pkg-config
             mingw-w64-x86_64-gcc mingw-w64-x86_64-libzip
             mingw-w64-x86_64-openssl mingw-w64-x86_64-curl
             mingw-w64-x86_64-libpng mingw-w64-x86_64-bzip2
 
-      - name: 编译安装依赖 libgeneral v71（永久有效commit链接）
+      # 3. 官方动作拉取libgeneral v71（指定commit，100%不会404）
+      - name: Checkout libgeneral v71
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/libgeneral
+          ref: 57c5c8e
+          path: libgeneral
+
+      # 4. 编译安装libgeneral
+      - name: 编译安装依赖 libgeneral
         run: |
-          # 永久有效commit哈希链接，不会404
-          curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libgeneral/archive/57c5c8e.tar.gz \
-          -o libgeneral.tar.gz
-          
-          # 校验压缩包有效性
-          file libgeneral.tar.gz | grep -q "gzip compressed data"
-          
-          # 解压+编译，路径和commit哈希对应
-          tar -zxf libgeneral.tar.gz
-          cd libgeneral-57c5c8e
+          cd libgeneral
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
           cd ..
 
-      - name: 编译安装依赖 libipatcher v43（永久有效commit链接）
+      # 5. 官方动作拉取libipatcher v43（指定commit，100%不会404）
+      - name: Checkout libipatcher v43
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/libipatcher
+          ref: 3e78c7d
+          path: libipatcher
+
+      # 6. 编译安装libipatcher
+      - name: 编译安装依赖 libipatcher
         run: |
-          curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libipatcher/archive/3e78c7d.tar.gz \
-          -o libipatcher.tar.gz
-          
-          file libipatcher.tar.gz | grep -q "gzip compressed data"
-          
-          tar -zxf libipatcher.tar.gz
-          cd libipatcher-3e78c7d
+          cd libipatcher
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
           cd ..
 
+      # 7. 编译主程序futurerestore
       - name: 生成配置脚本 & 编译 futurerestore
         run: |
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           strip src/futurerestore.exe
 
+      # 8. 上传编译产物
       - name: 上传 Windows 编译产物
         uses: actions/upload-artifact@v4
         with:
@@ -83,7 +88,7 @@ jobs:
     name: Build for macOS
     runs-on: macos-latest
     steps:
-      - name: Checkout 源码
+      - name: Checkout futurerestore 主源码
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -94,31 +99,31 @@ jobs:
           echo 'export PKG_CONFIG_PATH="/usr/local/opt/openssl@1.1/lib/pkgconfig:$PKG_CONFIG_PATH"' >> ~/.zshrc
           source ~/.zshrc
 
-      - name: 编译安装依赖 libgeneral v71
+      - name: Checkout libgeneral v71
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/libgeneral
+          ref: 57c5c8e
+          path: libgeneral
+
+      - name: 编译安装依赖 libgeneral
         run: |
-          curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libgeneral/archive/57c5c8e.tar.gz \
-          -o libgeneral.tar.gz
-          
-          file libgeneral.tar.gz | grep -q "gzip compressed data"
-          
-          tar -zxf libgeneral.tar.gz
-          cd libgeneral-57c5c8e
+          cd libgeneral
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           cd ..
 
-      - name: 编译安装依赖 libipatcher v43
+      - name: Checkout libipatcher v43
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/libipatcher
+          ref: 3e78c7d
+          path: libipatcher
+
+      - name: 编译安装依赖 libipatcher
         run: |
-          curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libipatcher/archive/3e78c7d.tar.gz \
-          -o libipatcher.tar.gz
-          
-          file libipatcher.tar.gz | grep -q "gzip compressed data"
-          
-          tar -zxf libipatcher.tar.gz
-          cd libipatcher-3e78c7d
+          cd libipatcher
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -141,7 +146,7 @@ jobs:
     name: Build for Linux (x64)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 源码
+      - name: Checkout futurerestore 主源码
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -149,34 +154,34 @@ jobs:
       - name: 安装系统依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential autoconf automake libtool pkg-config libcurl4-openssl-dev libzip-dev libssl-dev libpng-dev libbz2-dev curl tar gzip file
+          sudo apt-get install -y build-essential autoconf automake libtool pkg-config libcurl4-openssl-dev libzip-dev libssl-dev libpng-dev libbz2-dev
 
-      - name: 编译安装依赖 libgeneral v71
+      - name: Checkout libgeneral v71
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/libgeneral
+          ref: 57c5c8e
+          path: libgeneral
+
+      - name: 编译安装依赖 libgeneral
         run: |
-          curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libgeneral/archive/57c5c8e.tar.gz \
-          -o libgeneral.tar.gz
-          
-          file libgeneral.tar.gz | grep -q "gzip compressed data"
-          
-          tar -zxf libgeneral.tar.gz
-          cd libgeneral-57c5c8e
+          cd libgeneral
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
           sudo ldconfig
           cd ..
 
-      - name: 编译安装依赖 libipatcher v43
+      - name: Checkout libipatcher v43
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/libipatcher
+          ref: 3e78c7d
+          path: libipatcher
+
+      - name: 编译安装依赖 libipatcher
         run: |
-          curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libipatcher/archive/3e78c7d.tar.gz \
-          -o libipatcher.tar.gz
-          
-          file libipatcher.tar.gz | grep -q "gzip compressed data"
-          
-          tar -zxf libipatcher.tar.gz
-          cd libipatcher-3e78c7d
+          cd libipatcher
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
