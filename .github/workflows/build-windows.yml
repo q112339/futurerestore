@@ -37,10 +37,8 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          # 拉取全部分支和标签，确保能找到对应版本
-          git fetch --all --tags --prune
-          # 明确checkout标签，彻底避免pathspec错误
-          git checkout tags/71 -b build_temp
+          # 直接用commit哈希锁定v71版本，适配futurerestore v193，彻底绕过标签问题
+          git checkout 57c5c8e
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
@@ -50,8 +48,8 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git fetch --all --tags --prune
-          git checkout tags/43 -b build_temp
+          # 直接用commit哈希锁定v43版本，适配futurerestore v193
+          git checkout 3e78c7d
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
@@ -89,8 +87,7 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          git fetch --all --tags --prune
-          git checkout tags/71 -b build_temp
+          git checkout 57c5c8e
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -100,8 +97,7 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git fetch --all --tags --prune
-          git checkout tags/43 -b build_temp
+          git checkout 3e78c7d
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -138,8 +134,7 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          git fetch --all --tags --prune
-          git checkout tags/71 -b build_temp
+          git checkout 57c5c8e
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
@@ -150,8 +145,7 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git fetch --all --tags --prune
-          git checkout tags/43 -b build_temp
+          git checkout 3e78c7d
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
