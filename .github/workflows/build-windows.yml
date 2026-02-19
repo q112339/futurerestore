@@ -33,34 +33,34 @@ jobs:
             mingw-w64-x86_64-openssl mingw-w64-x86_64-curl
             mingw-w64-x86_64-libpng mingw-w64-x86_64-bzip2
 
-      - name: 编译安装依赖 libgeneral v71
+      - name: 编译安装依赖 libgeneral v71（永久有效commit链接）
         run: |
-          # 带重试、超时、失败退出的下载，确保网络波动也能成功
+          # 永久有效commit哈希链接，不会404
           curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libgeneral/archive/refs/tags/71.tar.gz \
+          https://github.com/tihmstar/libgeneral/archive/57c5c8e.tar.gz \
           -o libgeneral.tar.gz
           
-          # 校验文件是否为有效压缩包，无效直接终止
+          # 校验压缩包有效性
           file libgeneral.tar.gz | grep -q "gzip compressed data"
           
-          # 解压编译
+          # 解压+编译，路径和commit哈希对应
           tar -zxf libgeneral.tar.gz
-          cd libgeneral-71
+          cd libgeneral-57c5c8e
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
           cd ..
 
-      - name: 编译安装依赖 libipatcher v43
+      - name: 编译安装依赖 libipatcher v43（永久有效commit链接）
         run: |
           curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libipatcher/archive/refs/tags/43.tar.gz \
+          https://github.com/tihmstar/libipatcher/archive/3e78c7d.tar.gz \
           -o libipatcher.tar.gz
           
           file libipatcher.tar.gz | grep -q "gzip compressed data"
           
           tar -zxf libipatcher.tar.gz
-          cd libipatcher-43
+          cd libipatcher-3e78c7d
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
@@ -97,13 +97,13 @@ jobs:
       - name: 编译安装依赖 libgeneral v71
         run: |
           curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libgeneral/archive/refs/tags/71.tar.gz \
+          https://github.com/tihmstar/libgeneral/archive/57c5c8e.tar.gz \
           -o libgeneral.tar.gz
           
           file libgeneral.tar.gz | grep -q "gzip compressed data"
           
           tar -zxf libgeneral.tar.gz
-          cd libgeneral-71
+          cd libgeneral-57c5c8e
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -112,13 +112,13 @@ jobs:
       - name: 编译安装依赖 libipatcher v43
         run: |
           curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libipatcher/archive/refs/tags/43.tar.gz \
+          https://github.com/tihmstar/libipatcher/archive/3e78c7d.tar.gz \
           -o libipatcher.tar.gz
           
           file libipatcher.tar.gz | grep -q "gzip compressed data"
           
           tar -zxf libipatcher.tar.gz
-          cd libipatcher-43
+          cd libipatcher-3e78c7d
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -154,13 +154,13 @@ jobs:
       - name: 编译安装依赖 libgeneral v71
         run: |
           curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libgeneral/archive/refs/tags/71.tar.gz \
+          https://github.com/tihmstar/libgeneral/archive/57c5c8e.tar.gz \
           -o libgeneral.tar.gz
           
           file libgeneral.tar.gz | grep -q "gzip compressed data"
           
           tar -zxf libgeneral.tar.gz
-          cd libgeneral-71
+          cd libgeneral-57c5c8e
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
@@ -170,13 +170,13 @@ jobs:
       - name: 编译安装依赖 libipatcher v43
         run: |
           curl -fL --retry 5 --retry-delay 3 --connect-timeout 10 \
-          https://github.com/tihmstar/libipatcher/archive/refs/tags/43.tar.gz \
+          https://github.com/tihmstar/libipatcher/archive/3e78c7d.tar.gz \
           -o libipatcher.tar.gz
           
           file libipatcher.tar.gz | grep -q "gzip compressed data"
           
           tar -zxf libipatcher.tar.gz
-          cd libipatcher-43
+          cd libipatcher-3e78c7d
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
