@@ -22,7 +22,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: 配置 MSYS2 全量编译环境（先配置环境，再执行修改）
+      - name: 配置 MSYS2 全量编译环境
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -33,18 +33,7 @@ jobs:
             mingw-w64-x86_64-openssl mingw-w64-x86_64-curl
             mingw-w64-x86_64-libpng mingw-w64-x86_64-bzip2
 
-      - name: 【核心修复】自动修复版本号+禁用依赖校验
-        run: |
-          # 修复libgeneral版本号为71，满足>=65的要求
-          sed -i 's/AC_INIT(\[libgeneral\], \[.*\]/AC_INIT([libgeneral], [71]/' libgeneral/configure.ac
-          # 去掉libgeneral的版本校验要求
-          sed -i 's/PKG_CHECK_MODULES(\[libgeneral\], \[libgeneral >= 65\])/PKG_CHECK_MODULES([libgeneral], [libgeneral])/' libpatchfinder/configure.ac
-          # 彻底删除所有可选依赖的强制校验
-          sed -i '/PKG_CHECK_MODULES(\[libinsn\]/d' libpatchfinder/configure.ac
-          sed -i '/PKG_CHECK_MODULES(\[libimg4tool\]/d' libpatchfinder/configure.ac
-          sed -i '/PKG_CHECK_MODULES(\[libm3tools\]/d' libpatchfinder/configure.ac
-
-      - name: 全局环境变量配置
+      - name: 全局环境变量配置（强制优先）
         run: |
           export PREFIX=/mingw64
           export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig
@@ -64,14 +53,25 @@ jobs:
           make -j$(nproc)
           make install
           cd ..
-          pkg-config --modversion libgeneral
+          # 验证安装
+          ls -la $PREFIX/lib/pkgconfig/libgeneral.pc
+          cat $PREFIX/lib/pkgconfig/libgeneral.pc
 
-      - name: 编译安装 libpatchfinder
+      - name: 【终极绕过】编译安装 libpatchfinder（直接传参，跳过pkg-config）
         run: |
           cd libpatchfinder
           chmod +x autogen.sh
           autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
+          # 直接手动传入libgeneral的编译参数，彻底跳过pkg-config版本检查
+          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
+            libgeneral_CFLAGS="-I$PREFIX/include" \
+            libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
+            libimg4tool_CFLAGS="" \
+            libimg4tool_LIBS="" \
+            libinsn_CFLAGS="" \
+            libinsn_LIBS="" \
+            libm3tools_CFLAGS="" \
+            libm3tools_LIBS=""
           make -j$(nproc)
           make install
           cd ..
@@ -110,20 +110,9 @@ jobs:
         with:
           submodules: recursive
 
-      - name: 安装 Homebrew 全量依赖（先配置环境）
+      - name: 安装 Homebrew 全量依赖
         run: |
           brew install git autoconf automake libtool pkg-config libzip openssl@1.1 binutils gnu-sed
-
-      - name: 【核心修复】自动修复版本号+禁用依赖校验
-        run: |
-          # 用gnu-sed确保跨平台兼容，修复版本号
-          gsed -i 's/AC_INIT(\[libgeneral\], \[.*\]/AC_INIT([libgeneral], [71]/' libgeneral/configure.ac
-          # 去掉libgeneral的版本校验要求
-          gsed -i 's/PKG_CHECK_MODULES(\[libgeneral\], \[libgeneral >= 65\])/PKG_CHECK_MODULES([libgeneral], [libgeneral])/' libpatchfinder/configure.ac
-          # 彻底删除所有可选依赖的强制校验
-          gsed -i '/PKG_CHECK_MODULES(\[libinsn\]/d' libpatchfinder/configure.ac
-          gsed -i '/PKG_CHECK_MODULES(\[libimg4tool\]/d' libpatchfinder/configure.ac
-          gsed -i '/PKG_CHECK_MODULES(\[libm3tools\]/d' libpatchfinder/configure.ac
 
       - name: 全局环境变量配置（兼容全芯片）
         run: |
@@ -151,14 +140,24 @@ jobs:
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           cd ..
-          pkg-config --modversion libgeneral
+          ls -la $PREFIX/lib/pkgconfig/libgeneral.pc
+          cat $PREFIX/lib/pkgconfig/libgeneral.pc
 
-      - name: 编译安装 libpatchfinder
+      - name: 【终极绕过】编译安装 libpatchfinder（直接传参，跳过pkg-config）
         run: |
           cd libpatchfinder
           chmod +x autogen.sh
           autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
+          # 直接手动传入libgeneral的编译参数，彻底跳过pkg-config版本检查
+          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
+            libgeneral_CFLAGS="-I$PREFIX/include" \
+            libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
+            libimg4tool_CFLAGS="" \
+            libimg4tool_LIBS="" \
+            libinsn_CFLAGS="" \
+            libinsn_LIBS="" \
+            libm3tools_CFLAGS="" \
+            libm3tools_LIBS=""
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           cd ..
@@ -197,21 +196,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: 安装系统全量依赖（先配置环境）
+      - name: 安装系统全量依赖
         run: |
           sudo apt-get update
           sudo apt-get install -y git build-essential autoconf automake libtool pkg-config libcurl4-openssl-dev libzip-dev libssl-dev libpng-dev libbz2-dev binutils-dev libiberty-dev sed
-
-      - name: 【核心修复】自动修复版本号+禁用依赖校验
-        run: |
-          # 修复libgeneral版本号为71
-          sed -i 's/AC_INIT(\[libgeneral\], \[.*\]/AC_INIT([libgeneral], [71]/' libgeneral/configure.ac
-          # 去掉libgeneral的版本校验要求
-          sed -i 's/PKG_CHECK_MODULES(\[libgeneral\], \[libgeneral >= 65\])/PKG_CHECK_MODULES([libgeneral], [libgeneral])/' libpatchfinder/configure.ac
-          # 彻底删除所有可选依赖的强制校验
-          sed -i '/PKG_CHECK_MODULES(\[libinsn\]/d' libpatchfinder/configure.ac
-          sed -i '/PKG_CHECK_MODULES(\[libimg4tool\]/d' libpatchfinder/configure.ac
-          sed -i '/PKG_CHECK_MODULES(\[libm3tools\]/d' libpatchfinder/configure.ac
 
       - name: 全局环境变量配置
         run: |
@@ -236,14 +224,24 @@ jobs:
           sudo -E make install
           sudo ldconfig
           cd ..
-          pkg-config --modversion libgeneral
+          ls -la $PREFIX/lib/pkgconfig/libgeneral.pc
+          cat $PREFIX/lib/pkgconfig/libgeneral.pc
 
-      - name: 编译安装 libpatchfinder
+      - name: 【终极绕过】编译安装 libpatchfinder（直接传参，跳过pkg-config）
         run: |
           cd libpatchfinder
           chmod +x autogen.sh
           autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
+          # 直接手动传入libgeneral的编译参数，彻底跳过pkg-config版本检查
+          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
+            libgeneral_CFLAGS="-I$PREFIX/include" \
+            libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
+            libimg4tool_CFLAGS="" \
+            libimg4tool_LIBS="" \
+            libinsn_CFLAGS="" \
+            libinsn_LIBS="" \
+            libm3tools_CFLAGS="" \
+            libm3tools_LIBS=""
           make -j$(nproc)
           sudo -E make install
           sudo ldconfig
