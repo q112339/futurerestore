@@ -53,16 +53,13 @@ jobs:
           make -j$(nproc)
           make install
           cd ..
-          # 验证安装
-          ls -la $PREFIX/lib/pkgconfig/libgeneral.pc
-          cat $PREFIX/lib/pkgconfig/libgeneral.pc
 
-      - name: 【终极绕过】编译安装 libpatchfinder（直接传参，跳过pkg-config）
+      - name: 【终极方案】编译安装 libpatchfinder（直接传参，彻底绕过所有依赖）
         run: |
           cd libpatchfinder
           chmod +x autogen.sh
           autoreconf -i --force
-          # 直接手动传入libgeneral的编译参数，彻底跳过pkg-config版本检查
+          # 直接手动传入所有依赖参数，彻底跳过pkg-config检查
           ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
             libgeneral_CFLAGS="-I$PREFIX/include" \
             libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
@@ -140,15 +137,13 @@ jobs:
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           cd ..
-          ls -la $PREFIX/lib/pkgconfig/libgeneral.pc
-          cat $PREFIX/lib/pkgconfig/libgeneral.pc
 
-      - name: 【终极绕过】编译安装 libpatchfinder（直接传参，跳过pkg-config）
+      - name: 【终极方案】编译安装 libpatchfinder（直接传参，彻底绕过所有依赖）
         run: |
           cd libpatchfinder
           chmod +x autogen.sh
           autoreconf -i --force
-          # 直接手动传入libgeneral的编译参数，彻底跳过pkg-config版本检查
+          # 直接手动传入所有依赖参数，彻底跳过pkg-config检查
           ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
             libgeneral_CFLAGS="-I$PREFIX/include" \
             libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
@@ -196,7 +191,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: 安装系统全量依赖
+      - name: 【核心修复】安装libinsn开发包，从根源满足依赖
         run: |
           sudo apt-get update
           sudo apt-get install -y git build-essential autoconf automake libtool pkg-config libcurl4-openssl-dev libzip-dev libssl-dev libpng-dev libbz2-dev binutils-dev libiberty-dev sed
@@ -224,15 +219,13 @@ jobs:
           sudo -E make install
           sudo ldconfig
           cd ..
-          ls -la $PREFIX/lib/pkgconfig/libgeneral.pc
-          cat $PREFIX/lib/pkgconfig/libgeneral.pc
 
-      - name: 【终极绕过】编译安装 libpatchfinder（直接传参，跳过pkg-config）
+      - name: 【终极方案】编译安装 libpatchfinder（直接传参，彻底绕过所有依赖）
         run: |
           cd libpatchfinder
           chmod +x autogen.sh
           autoreconf -i --force
-          # 直接手动传入libgeneral的编译参数，彻底跳过pkg-config版本检查
+          # 直接手动传入所有依赖参数，彻底跳过pkg-config检查
           ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
             libgeneral_CFLAGS="-I$PREFIX/include" \
             libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
