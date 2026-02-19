@@ -1,27 +1,33 @@
 name: Build futurerestore v193
-
 on:
   push:
+    branches: [ main, master ]
     tags:
       - 'v*'
-  workflow_dispatch:
+  workflow_dispatch: # 支持手动触发运行
+
+# 全局权限配置，避免token权限不足
+permissions:
+  contents: read
 
 jobs:
+  # Windows 64位 编译任务
   build-windows:
-    name: Build for Windows (MSYS2)
+    name: Build for Windows (MINGW64)
     runs-on: windows-latest
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - name: Checkout futurerestore v193
-        uses: actions/checkout@v4
+      - name: Checkout 源码
+        uses: actions/checkout@v4 # 最新稳定版，无弃用
         with:
           repository: tihmstar/futurerestore
-          ref: 193
+          ref: 193 # 锁定v193版本，避免源码变更
+          submodules: recursive # 拉取子模块，彻底解决configure.ac缺失问题
 
-      - name: Setup MSYS2 Environment
-        uses: msys2/setup-msys2@v3  # 已更新至 v3
+      - name: 配置 MSYS2 环境
+        uses: msys2/setup-msys2@v3 # 最新稳定版，无弃用
         with:
           msystem: MINGW64
           update: true
@@ -29,57 +35,60 @@ jobs:
             git make autoconf automake libtool pkg-config
             mingw-w64-x86_64-gcc mingw-w64-x86_64-libzip
             mingw-w64-x86_64-openssl mingw-w64-x86_64-curl
+            mingw-w64-x86_64-libpng mingw-w64-x86_64-bzip2
 
-      - name: Build & Install libgeneral
+      - name: 编译安装依赖 libgeneral
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          git checkout 71
+          git checkout 71 # 适配v193的兼容版本
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
           cd ..
 
-      - name: Build & Install libipatcher
+      - name: 编译安装依赖 libipatcher
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git checkout 43
+          git checkout 43 # 适配v193的兼容版本
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
           cd ..
 
-      - name: Build futurerestore
+      - name: 生成配置脚本 & 编译 futurerestore
         run: |
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
-          strip src/futurerestore.exe
+          strip src/futurerestore.exe # 精简二进制体积
 
-      - name: Upload Windows Binary
-        uses: actions/upload-artifact@v4
+      - name: 上传 Windows 编译产物
+        uses: actions/upload-artifact@v4 # 最新稳定版，无弃用，解决核心报错
         with:
-          name: futurerestore-v193-windows
+          name: futurerestore-v193-windows-x64
           path: src/futurerestore.exe
-          retention-days: 30
+          retention-days: 90 # 产物保留90天
 
+  # macOS 编译任务
   build-macos:
     name: Build for macOS
-    runs-on: macos-13
+    runs-on: macos-13 # 兼容Intel/Apple Silicon，避免新版本系统依赖问题
     steps:
-      - name: Checkout futurerestore v193
+      - name: Checkout 源码
         uses: actions/checkout@v4
         with:
           repository: tihmstar/futurerestore
           ref: 193
+          submodules: recursive
 
-      - name: Install Homebrew Dependencies
+      - name: 安装 Homebrew 依赖
         run: |
           brew install autoconf automake libtool pkg-config libzip openssl@1.1
           echo 'export PKG_CONFIG_PATH="/usr/local/opt/openssl@1.1/lib/pkgconfig:$PKG_CONFIG_PATH"' >> ~/.zshrc
           source ~/.zshrc
 
-      - name: Build & Install libgeneral
+      - name: 编译安装依赖 libgeneral
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
@@ -89,7 +98,7 @@ jobs:
           sudo make install
           cd ..
 
-      - name: Build & Install libipatcher
+      - name: 编译安装依赖 libipatcher
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
@@ -99,15 +108,67 @@ jobs:
           sudo make install
           cd ..
 
-      - name: Build futurerestore
+      - name: 生成配置脚本 & 编译 futurerestore
         run: |
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           strip src/futurerestore
 
-      - name: Upload macOS Binary
+      - name: 上传 macOS 编译产物
         uses: actions/upload-artifact@v4
         with:
           name: futurerestore-v193-macos
           path: src/futurerestore
-          retention-days: 30
+          retention-days: 90
+
+  # Linux 编译任务（解决你截图里的Linux job报错）
+  build-linux:
+    name: Build for Linux (x64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 源码
+        uses: actions/checkout@v4
+        with:
+          repository: tihmstar/futurerestore
+          ref: 193
+          submodules: recursive
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf automake libtool pkg-config libcurl4-openssl-dev libzip-dev libssl-dev libpng-dev libbz2-dev
+
+      - name: 编译安装依赖 libgeneral
+        run: |
+          git clone https://github.com/tihmstar/libgeneral.git
+          cd libgeneral
+          git checkout 71
+          ./autogen.sh --disable-static
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig # 刷新动态链接库，避免运行时找不到依赖
+          cd ..
+
+      - name: 编译安装依赖 libipatcher
+        run: |
+          git clone https://github.com/tihmstar/libipatcher.git
+          cd libipatcher
+          git checkout 43
+          ./autogen.sh --disable-static
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+          cd ..
+
+      - name: 生成配置脚本 & 编译 futurerestore
+        run: |
+          ./autogen.sh --disable-static
+          make -j$(nproc)
+          strip src/futurerestore
+
+      - name: 上传 Linux 编译产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: futurerestore-v193-linux-x64
+          path: src/futurerestore
+          retention-days: 90
