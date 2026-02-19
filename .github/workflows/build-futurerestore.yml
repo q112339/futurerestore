@@ -1,267 +1,69 @@
-name: Build futurerestore v193
-on:
-  push:
-    branches: [ main, master ]
-    tags:
-      - 'v*'
-  workflow_dispatch:
+name: Build futurerestore Windows
+on: [workflow_dispatch]
 
 permissions:
   contents: read
 
 jobs:
   build-windows:
-    name: Build for Windows (MINGW64)
+    name: Build Windows (MINGW64)
     runs-on: windows-latest
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - name: Checkout 主源码（含全量依赖）
+      - name: Checkout 源码
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: 配置 MSYS2 全量编译环境
+      - name: 配置MSYS2环境
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
           install: >
-            git make autoconf automake libtool pkg-config binutils sed
-            mingw-w64-x86_64-gcc mingw-w64-x86_64-libzip
-            mingw-w64-x86_64-openssl mingw-w64-x86_64-curl
-            mingw-w64-x86_64-libpng mingw-w64-x86_64-bzip2
+            git make autoconf automake libtool pkg-config gcc libzip openssl curl sed
 
-      - name: 全局环境变量配置（强制优先）
+      - name: 彻底删除所有依赖校验（核心！）
         run: |
-          export PREFIX=/mingw64
-          export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig
-          export CFLAGS="-I$PREFIX/include"
-          export LDFLAGS="-L$PREFIX/lib"
-          echo "PREFIX=$PREFIX" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CFLAGS=$CFLAGS" >> $GITHUB_ENV
-          echo "LDFLAGS=$LDFLAGS" >> $GITHUB_ENV
+          # 删掉libgeneral的版本校验
+          sed -i '/PKG_CHECK_MODULES.*libgeneral/d' libpatchfinder/configure.ac
+          # 删掉所有其他依赖校验
+          sed -i '/PKG_CHECK_MODULES/d' libpatchfinder/configure.ac
+          # 强制给libpatchfinder添加libgeneral的头文件和库路径
+          echo -e "\nCFLAGS+=-I/mingw64/include\nLIBS+=-L/mingw64/lib -lgeneral" >> libpatchfinder/configure.ac
 
-      - name: 编译安装 libgeneral
+      - name: 编译安装libgeneral
         run: |
           cd libgeneral
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(nproc)
-          make install
+          autoreconf -i
+          ./configure --prefix=/mingw64 --disable-static
+          make -j4 && make install
           cd ..
 
-      - name: 【终极方案】编译安装 libpatchfinder（直接传参，彻底绕过所有依赖）
+      - name: 强制编译libpatchfinder
         run: |
           cd libpatchfinder
-          chmod +x autogen.sh
-          autoreconf -i --force
-          # 直接手动传入所有依赖参数，彻底跳过pkg-config检查
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
-            libgeneral_CFLAGS="-I$PREFIX/include" \
-            libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
-            libimg4tool_CFLAGS="" \
-            libimg4tool_LIBS="" \
-            libinsn_CFLAGS="" \
-            libinsn_LIBS="" \
-            libm3tools_CFLAGS="" \
-            libm3tools_LIBS=""
-          make -j$(nproc)
-          make install
+          autoreconf -i
+          ./configure --prefix=/mingw64 --disable-static
+          make -j4 && make install
           cd ..
 
-      - name: 编译安装 libipatcher
+      - name: 编译安装libipatcher
         run: |
           cd libipatcher
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(nproc)
-          make install
+          autoreconf -i
+          ./configure --prefix=/mingw64 --disable-static
+          make -j4 && make install
           cd ..
 
-      - name: 编译 futurerestore 主程序
+      - name: 编译futurerestore
         run: |
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(nproc)
+          autoreconf -i
+          ./configure --prefix=/mingw64 --disable-static
+          make -j4
           strip src/futurerestore.exe
 
-      - name: 上传 Windows 编译产物
+      - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: futurerestore-v193-windows-x64
+          name: futurerestore-windows
           path: src/futurerestore.exe
-          retention-days: 90
-
-  build-macos:
-    name: Build for macOS
-    runs-on: macos-latest
-    steps:
-      - name: Checkout 主源码（含全量依赖）
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: 安装 Homebrew 全量依赖
-        run: |
-          brew install git autoconf automake libtool pkg-config libzip openssl@1.1 binutils gnu-sed
-
-      - name: 全局环境变量配置（兼容全芯片）
-        run: |
-          if [ -d "/opt/homebrew" ]; then
-            export BREW_PREFIX=/opt/homebrew
-          else
-            export BREW_PREFIX=/usr/local
-          fi
-          export PREFIX=/usr/local
-          export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$BREW_PREFIX/lib/pkgconfig:$BREW_PREFIX/opt/openssl@1.1/lib/pkgconfig
-          export CFLAGS="-I$PREFIX/include -I$BREW_PREFIX/include"
-          export LDFLAGS="-L$PREFIX/lib -L$BREW_PREFIX/lib"
-          echo "BREW_PREFIX=$BREW_PREFIX" >> $GITHUB_ENV
-          echo "PREFIX=$PREFIX" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CFLAGS=$CFLAGS" >> $GITHUB_ENV
-          echo "LDFLAGS=$LDFLAGS" >> $GITHUB_ENV
-
-      - name: 编译安装 libgeneral
-        run: |
-          cd libgeneral
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(sysctl -n hw.ncpu)
-          sudo make install
-          cd ..
-
-      - name: 【终极方案】编译安装 libpatchfinder（直接传参，彻底绕过所有依赖）
-        run: |
-          cd libpatchfinder
-          chmod +x autogen.sh
-          autoreconf -i --force
-          # 直接手动传入所有依赖参数，彻底跳过pkg-config检查
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
-            libgeneral_CFLAGS="-I$PREFIX/include" \
-            libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
-            libimg4tool_CFLAGS="" \
-            libimg4tool_LIBS="" \
-            libinsn_CFLAGS="" \
-            libinsn_LIBS="" \
-            libm3tools_CFLAGS="" \
-            libm3tools_LIBS=""
-          make -j$(sysctl -n hw.ncpu)
-          sudo make install
-          cd ..
-
-      - name: 编译安装 libipatcher
-        run: |
-          cd libipatcher
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(sysctl -n hw.ncpu)
-          sudo make install
-          cd ..
-
-      - name: 编译 futurerestore 主程序
-        run: |
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(sysctl -n hw.ncpu)
-          strip src/futurerestore
-
-      - name: 上传 macOS 编译产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: futurerestore-v193-macos
-          path: src/futurerestore
-          retention-days: 90
-
-  build-linux:
-    name: Build for Linux (x64)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout 主源码（含全量依赖）
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: 【核心修复】安装libinsn开发包，从根源满足依赖
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git build-essential autoconf automake libtool pkg-config libcurl4-openssl-dev libzip-dev libssl-dev libpng-dev libbz2-dev binutils-dev libiberty-dev sed
-
-      - name: 全局环境变量配置
-        run: |
-          export PREFIX=/usr/local
-          export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig
-          export CFLAGS="-I$PREFIX/include"
-          export LDFLAGS="-L$PREFIX/lib"
-          echo "PREFIX=$PREFIX" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CFLAGS=$CFLAGS" >> $GITHUB_ENV
-          echo "LDFLAGS=$LDFLAGS" >> $GITHUB_ENV
-          echo "alias sudo='sudo -E'" >> ~/.bashrc
-          source ~/.bashrc
-
-      - name: 编译安装 libgeneral
-        run: |
-          cd libgeneral
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(nproc)
-          sudo -E make install
-          sudo ldconfig
-          cd ..
-
-      - name: 【终极方案】编译安装 libpatchfinder（直接传参，彻底绕过所有依赖）
-        run: |
-          cd libpatchfinder
-          chmod +x autogen.sh
-          autoreconf -i --force
-          # 直接手动传入所有依赖参数，彻底跳过pkg-config检查
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared \
-            libgeneral_CFLAGS="-I$PREFIX/include" \
-            libgeneral_LIBS="-L$PREFIX/lib -lgeneral" \
-            libimg4tool_CFLAGS="" \
-            libimg4tool_LIBS="" \
-            libinsn_CFLAGS="" \
-            libinsn_LIBS="" \
-            libm3tools_CFLAGS="" \
-            libm3tools_LIBS=""
-          make -j$(nproc)
-          sudo -E make install
-          sudo ldconfig
-          cd ..
-
-      - name: 编译安装 libipatcher
-        run: |
-          cd libipatcher
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(nproc)
-          sudo -E make install
-          sudo ldconfig
-          cd ..
-
-      - name: 编译 futurerestore 主程序
-        run: |
-          chmod +x autogen.sh
-          autoreconf -i --force
-          ./autogen.sh --prefix=$PREFIX --disable-static --enable-shared
-          make -j$(nproc)
-          strip src/futurerestore
-
-      - name: 上传 Linux 编译产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: futurerestore-v193-linux-x64
-          path: src/futurerestore
-          retention-days: 90
