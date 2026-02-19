@@ -19,15 +19,15 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
+      # 直接拉取你当前仓库的源码，不再额外拉取外部仓库，彻底解决git报错
       - name: Checkout 源码
-        uses: actions/checkout@v4 # 最新稳定版，无弃用
+        uses: actions/checkout@v4
         with:
-          repository: tihmstar/futurerestore
-          ref: 193 # 锁定v193版本，避免源码变更
-          submodules: recursive # 拉取子模块，彻底解决configure.ac缺失问题
+          submodules: recursive # 自动拉取子模块，彻底解决configure.ac缺失问题
 
+      # 修正为官方唯一稳定版v2，解决版本找不到报错
       - name: 配置 MSYS2 环境
-        uses: msys2/setup-msys2@v3 # 最新稳定版，无弃用
+        uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
@@ -64,22 +64,20 @@ jobs:
           strip src/futurerestore.exe # 精简二进制体积
 
       - name: 上传 Windows 编译产物
-        uses: actions/upload-artifact@v4 # 最新稳定版，无弃用，解决核心报错
+        uses: actions/upload-artifact@v4 # 官方无弃用最新版
         with:
           name: futurerestore-v193-windows-x64
           path: src/futurerestore.exe
-          retention-days: 90 # 产物保留90天
+          retention-days: 90
 
   # macOS 编译任务
   build-macos:
     name: Build for macOS
-    runs-on: macos-13 # 兼容Intel/Apple Silicon，避免新版本系统依赖问题
+    runs-on: macos-latest # 替换为官方当前支持的最新稳定版，解决运行器不支持报错
     steps:
       - name: Checkout 源码
         uses: actions/checkout@v4
         with:
-          repository: tihmstar/futurerestore
-          ref: 193
           submodules: recursive
 
       - name: 安装 Homebrew 依赖
@@ -121,7 +119,7 @@ jobs:
           path: src/futurerestore
           retention-days: 90
 
-  # Linux 编译任务（解决你截图里的Linux job报错）
+  # Linux 编译任务
   build-linux:
     name: Build for Linux (x64)
     runs-on: ubuntu-latest
@@ -129,8 +127,6 @@ jobs:
       - name: Checkout 源码
         uses: actions/checkout@v4
         with:
-          repository: tihmstar/futurerestore
-          ref: 193
           submodules: recursive
 
       - name: 安装系统依赖
