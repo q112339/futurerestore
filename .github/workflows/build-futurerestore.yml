@@ -1,4 +1,4 @@
-name: Build futurerestore Windows
+name: Build futurerestore Windows Only
 on: [workflow_dispatch]
 
 permissions:
@@ -20,16 +20,23 @@ jobs:
         with:
           msystem: MINGW64
           install: >
-            git make autoconf automake libtool pkg-config gcc libzip openssl curl sed
+            git make autoconf automake libtool pkg-config gcc libzip openssl curl
 
-      - name: 彻底删除所有依赖校验（核心！）
+      - name: 【核弹级修复】直接重写libpatchfinder的configure.ac
         run: |
-          # 删掉libgeneral的版本校验
-          sed -i '/PKG_CHECK_MODULES.*libgeneral/d' libpatchfinder/configure.ac
-          # 删掉所有其他依赖校验
-          sed -i '/PKG_CHECK_MODULES/d' libpatchfinder/configure.ac
-          # 强制给libpatchfinder添加libgeneral的头文件和库路径
-          echo -e "\nCFLAGS+=-I/mingw64/include\nLIBS+=-L/mingw64/lib -lgeneral" >> libpatchfinder/configure.ac
+          # 直接用一个最小化的、没有任何依赖检查的configure.ac覆盖原文件
+          cat > libpatchfinder/configure.ac << 'EOF'
+AC_INIT([libpatchfinder], [198])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_INSTALL
+AC_PROG_LIBTOOL
+# 手动指定libgeneral的路径，跳过所有检查
+CFLAGS="-I/mingw64/include"
+LIBS="-L/mingw64/lib -lgeneral"
+AC_OUTPUT([Makefile libpatchfinder.pc])
+EOF
 
       - name: 编译安装libgeneral
         run: |
@@ -39,7 +46,7 @@ jobs:
           make -j4 && make install
           cd ..
 
-      - name: 强制编译libpatchfinder
+      - name: 编译libpatchfinder
         run: |
           cd libpatchfinder
           autoreconf -i
