@@ -4,14 +4,12 @@ on:
     branches: [ main, master ]
     tags:
       - 'v*'
-  workflow_dispatch: # 支持手动触发运行
+  workflow_dispatch:
 
-# 全局权限配置，避免token权限不足
 permissions:
   contents: read
 
 jobs:
-  # Windows 64位 编译任务
   build-windows:
     name: Build for Windows (MINGW64)
     runs-on: windows-latest
@@ -19,13 +17,11 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      # 直接拉取你当前仓库的源码，不再额外拉取外部仓库，彻底解决git报错
       - name: Checkout 源码
         uses: actions/checkout@v4
         with:
-          submodules: recursive # 自动拉取子模块，彻底解决configure.ac缺失问题
+          submodules: recursive
 
-      # 修正为官方唯一稳定版v2，解决版本找不到报错
       - name: 配置 MSYS2 环境
         uses: msys2/setup-msys2@v2
         with:
@@ -41,7 +37,10 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          git checkout 71 # 适配v193的兼容版本
+          # 拉取全部分支和标签，确保能找到对应版本
+          git fetch --all --tags --prune
+          # 明确checkout标签，彻底避免pathspec错误
+          git checkout tags/71 -b build_temp
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
@@ -51,7 +50,8 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git checkout 43 # 适配v193的兼容版本
+          git fetch --all --tags --prune
+          git checkout tags/43 -b build_temp
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
           make install
@@ -61,19 +61,18 @@ jobs:
         run: |
           ./autogen.sh --prefix=/mingw64 --disable-static
           make -j$(nproc)
-          strip src/futurerestore.exe # 精简二进制体积
+          strip src/futurerestore.exe
 
       - name: 上传 Windows 编译产物
-        uses: actions/upload-artifact@v4 # 官方无弃用最新版
+        uses: actions/upload-artifact@v4
         with:
           name: futurerestore-v193-windows-x64
           path: src/futurerestore.exe
           retention-days: 90
 
-  # macOS 编译任务
   build-macos:
     name: Build for macOS
-    runs-on: macos-latest # 替换为官方当前支持的最新稳定版，解决运行器不支持报错
+    runs-on: macos-latest
     steps:
       - name: Checkout 源码
         uses: actions/checkout@v4
@@ -90,7 +89,8 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          git checkout 71
+          git fetch --all --tags --prune
+          git checkout tags/71 -b build_temp
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -100,7 +100,8 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git checkout 43
+          git fetch --all --tags --prune
+          git checkout tags/43 -b build_temp
           ./autogen.sh --disable-static
           make -j$(sysctl -n hw.ncpu)
           sudo make install
@@ -119,7 +120,6 @@ jobs:
           path: src/futurerestore
           retention-days: 90
 
-  # Linux 编译任务
   build-linux:
     name: Build for Linux (x64)
     runs-on: ubuntu-latest
@@ -138,18 +138,20 @@ jobs:
         run: |
           git clone https://github.com/tihmstar/libgeneral.git
           cd libgeneral
-          git checkout 71
+          git fetch --all --tags --prune
+          git checkout tags/71 -b build_temp
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
-          sudo ldconfig # 刷新动态链接库，避免运行时找不到依赖
+          sudo ldconfig
           cd ..
 
       - name: 编译安装依赖 libipatcher
         run: |
           git clone https://github.com/tihmstar/libipatcher.git
           cd libipatcher
-          git checkout 43
+          git fetch --all --tags --prune
+          git checkout tags/43 -b build_temp
           ./autogen.sh --disable-static
           make -j$(nproc)
           sudo make install
