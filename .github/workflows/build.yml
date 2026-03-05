@@ -22,19 +22,24 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake libssl-dev libzip-dev libplist-dev libimobiledevice-dev libirecovery-dev libusb-1.0-0-dev
+        sudo apt-get install -y build-essential cmake libssl-dev libzip-dev libplist-dev libimobiledevice-dev libirecovery-dev libusb-1.0-0-dev libtool automake autoconf
 
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         brew update
-        brew install cmake openssl libzip libplist libimobiledevice libirecovery
+        brew install cmake openssl libzip libplist libimobiledevice libirecovery libtool automake autoconf
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         choco install cmake
         choco install openssl
+        choco install git
+
+    - name: Initialize submodules
+      run: |
+        git submodule update --init --recursive
 
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
