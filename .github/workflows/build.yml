@@ -19,10 +19,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake libssl-dev libzip-dev libplist-dev libimobiledevice-dev libirecovery-dev libusb-1.0-0-dev libtool automake autoconf
 
-    - name: Initialize submodules
-      run: |
-        git submodule update --init --recursive
-
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
@@ -35,7 +31,7 @@ jobs:
         ./futurerestore --help
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: futurerestore-ubuntu
         path: build/futurerestore*
@@ -43,7 +39,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
 
@@ -51,10 +47,6 @@ jobs:
       run: |
         brew update
         brew install cmake openssl libzip libplist libimobiledevice libirecovery libtool automake autoconf
-
-    - name: Initialize submodules
-      run: |
-        git submodule update --init --recursive
 
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -76,33 +68,37 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code with submodules
+      uses: actions/checkout@v4
       with:
         submodules: recursive
+        fetch-depth: 0
 
     - name: Install dependencies
       run: |
-        choco install cmake
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install openssl
         choco install git
 
-    - name: Initialize submodules
-      run: |
-        git submodule update --init --recursive
-
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 17 2022" -A x64
 
     - name: Build
       run: cmake --build build --config Release
 
     - name: Test
       run: |
-        cd build
-        .\futurerestore.exe --help
+        if (Test-Path build\Release\futurerestore.exe) {
+          .\build\Release\futurerestore.exe --help
+        } else {
+          .\build\futurerestore.exe --help
+        }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: futurerestore-windows
-        path: build/futurerestore*
+        path: |
+          build/Release/futurerestore.exe
+          build/futurerestore.exe
