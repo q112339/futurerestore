@@ -7,35 +7,17 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-
+  build-ubuntu:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
 
-    - name: Install dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential cmake libssl-dev libzip-dev libplist-dev libimobiledevice-dev libirecovery-dev libusb-1.0-0-dev libtool automake autoconf
-
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew update
-        brew install cmake openssl libzip libplist libimobiledevice libirecovery libtool automake autoconf
-
-    - name: Install dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        choco install cmake
-        choco install openssl
-        choco install git
 
     - name: Initialize submodules
       run: |
@@ -55,5 +37,72 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: futurerestore-${{ matrix.os }}
+        name: futurerestore-ubuntu
+        path: build/futurerestore*
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install cmake openssl libzip libplist libimobiledevice libirecovery libtool automake autoconf
+
+    - name: Initialize submodules
+      run: |
+        git submodule update --init --recursive
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Test
+      run: |
+        cd build
+        ./futurerestore --help
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: futurerestore-macos
+        path: build/futurerestore*
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        choco install cmake
+        choco install openssl
+        choco install git
+
+    - name: Initialize submodules
+      run: |
+        git submodule update --init --recursive
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Test
+      run: |
+        cd build
+        .\futurerestore.exe --help
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: futurerestore-windows
         path: build/futurerestore*
