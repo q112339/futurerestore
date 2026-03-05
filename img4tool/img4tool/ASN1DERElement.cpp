@@ -8,7 +8,7 @@
 
 #include <algorithm>
 #include "../include/img4tool/ASN1DERElement.hpp"
-#include <libgeneral/macros.h>
+#include "../../external/libgeneral/include/libgeneral/macros.h"
 #include <string.h>
 
 using namespace tihmstar::img4tool;

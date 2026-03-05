@@ -14,18 +14,39 @@ project(futurerestore VERSION 2.0.0 LANGUAGES C CXX)
 # Set architecture to x86_64 explicitly
 set(ARCH "x86_64")
 
+# For MinGW-w64 builds, set NO_PKGCFG to avoid using pkg-config
+if("${CMAKE_C_COMPILER}" MATCHES "mingw")
+    set(NO_PKGCFG ON)
+endif()
+
 # Find dependencies for MinGW-w64 builds
 if("${CMAKE_C_COMPILER}" MATCHES "mingw")
-    # Use vcpkg-installed dependencies
-    set(CURL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
-    set(CURL_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libcurl.a")
-    set(OPENSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
-    set(OPENSSL_CRYPTO_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libcrypto.a")
-    set(OPENSSL_SSL_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libssl.a")
-    set(ZLIB_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
-    set(ZLIB_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libzlib.a")
-    include_directories(${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR})
-    link_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib)
+    # Use system-installed dependencies for MinGW-w64
+    set(CMAKE_FIND_ROOT_PATH /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    
+    # Bypass dependency finding for MinGW-w64
+    set(ZLIB_FOUND TRUE)
+    set(ZLIB_LIBRARY "z")
+    set(ZLIB_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/libzip/lib")
+    set(ZLIB_INCLUDE_DIRS "${ZLIB_INCLUDE_DIR}")
+    set(ZLIB_LIBRARY_DIRS "")
+    
+    set(OPENSSL_FOUND TRUE)
+    set(OPENSSL_CRYPTO_LIBRARY "crypto")
+    set(OPENSSL_SSL_LIBRARY "ssl")
+    set(OPENSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/libzip/lib")
+    
+    set(CURL_FOUND TRUE)
+    set(CURL_LIBRARY "curl")
+    set(CURL_INCLUDE_DIR "/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/include")
+    set(CURL_INCLUDE_DIRS "${CURL_INCLUDE_DIR}")
+    set(CURL_LIBRARY_DIRS "/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/lib")
+    
+    include_directories(${ZLIB_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
+    link_directories(${ZLIB_LIBRARY_DIRS} ${CURL_LIBRARY_DIRS})
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin" AND NOT "${CMAKE_C_COMPILER}" MATCHES "mingw")
@@ -99,21 +120,27 @@ if(NOT NO_PKGCFG AND NOT "${CMAKE_C_COMPILER}" MATCHES "mingw")
     include_directories(${DEPS_INCLUDE_DIRS})
     link_directories(${DEPS_LIBRARY_DIRS})
 else()
-    # For MinGW-w64 or when NO_PKGCFG is set, use project-local headers
-    include_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include)
+    # For MinGW-w64 or when NO_PKGCFG is set, use system headers
+    include_directories(/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/include)
 endif()
+
+# Add include directories for all targets
+include_directories(
+    ${CMAKE_SOURCE_DIR}/external/libgeneral/include
+    ${CMAKE_SOURCE_DIR}/external/libfragmentzip/include
+    ${CMAKE_SOURCE_DIR}/external/libplist/include
+    ${CMAKE_SOURCE_DIR}/external/libzip/lib
+)
 
 # Add libzip from external directory
 if("${CMAKE_C_COMPILER}" MATCHES "mingw")
     # For MinGW-w64 builds, use external/libzip
-    include_directories(${CMAKE_SOURCE_DIR}/external/libzip/lib)
     # Disable zstd for MinGW builds
     set(ENABLE_ZSTD OFF CACHE BOOL "Enable use of Zstandard" FORCE)
     set(CMAKE_C_FLAGS_MINSIZEREL_INIT "${ADDITIONAL_C_FLAGS} ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_MINSIZEREL_INIT}")
     set(CMAKE_C_FLAGS_RELEASE_INIT "${ADDITIONAL_C_FLAGS} ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE_INIT}")
 else()
     # For native builds, use external/libzip
-    include_directories(${CMAKE_SOURCE_DIR}/external/libzip/lib)
     set(CMAKE_C_FLAGS_MINSIZEREL_INIT "${ADDITIONAL_C_FLAGS} -flto=thin ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_MINSIZEREL_INIT}")
     set(CMAKE_C_FLAGS_RELEASE_INIT "${ADDITIONAL_C_FLAGS} -flto=thin ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE_INIT}")
 endif()

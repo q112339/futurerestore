@@ -8,9 +8,9 @@
 
 #include "../include/img4tool/img4tool.hpp"
 #include "../include/img4tool/ASN1DERElement.hpp"
-
-#include "../../dep_root/include/libgeneral/macros.h"
-#include "../../dep_root/include/libgeneral/ByteOrder.hpp"
+#include "../../external/libgeneral/include/libgeneral/ByteOrder.hpp"
+#include "../../external/libgeneral/include/libgeneral/macros.h"
+#include "../../external/libgeneral/include/libgeneral/exception.hpp"
 
 #include <stdio.h>
 #include <string.h>

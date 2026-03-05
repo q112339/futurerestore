@@ -31,4 +31,8 @@
 #define LIBIMOBILEDEVICE_GLUE_API
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #endif

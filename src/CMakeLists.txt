@@ -34,7 +34,9 @@ target_include_directories(futurerestore PRIVATE
         "${CMAKE_SOURCE_DIR}/external/tsschecker/external/jssy/jssy"
         "${CMAKE_SOURCE_DIR}/external/tsschecker/tsschecker"
         "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include"
+        "${CMAKE_SOURCE_DIR}/dependencies/zlib-1.3.2"
         "${CMAKE_SOURCE_DIR}/dependencies/zlib-1.3.2/contrib/minizip"
+        "${CMAKE_SOURCE_DIR}/dependencies/openssl/include"
         "${CMAKE_SOURCE_DIR}/external/libirecovery/include"
         "${CMAKE_SOURCE_DIR}/external/libgeneral/include"
         "${CMAKE_SOURCE_DIR}/img4tool/include"
@@ -64,6 +66,7 @@ if("${CMAKE_C_COMPILER}" MATCHES "mingw")
         ${CMAKE_SOURCE_DIR}/external/tsschecker/external/jssy/jssy
         ${CMAKE_SOURCE_DIR}/external/tsschecker/tsschecker
         ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include
+        ${CMAKE_SOURCE_DIR}/dependencies/zlib-1.3.2
     )
     # Add dependencies on other targets to ensure correct build order
     add_dependencies(futurerestore
@@ -103,12 +106,13 @@ if("${CMAKE_C_COMPILER}" MATCHES "mingw")
         # jssy library
         ${CMAKE_BINARY_DIR}/external/tsschecker/external/libjssy.a
         # External dependencies (use project-local libraries)
-        ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libcurl.a
-        ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libssl.a
-        ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libcrypto.a
-        ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libusbmuxd-2.0.a
-        ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libbz2.a
+        /usr/local/opt/curl/lib/libcurl.a
+        /usr/local/opt/openssl@3/lib/libssl.a
+        /usr/local/opt/openssl@3/lib/libcrypto.a
+        /usr/local/opt/libusbmuxd/lib/libusbmuxd-2.0.a
+        ${CMAKE_SOURCE_DIR}/dependencies/bzip2/lib/libbz2.a
         ${CMAKE_SOURCE_DIR}/dependencies/zlib-1.3.2/libz.a
+        -L${CMAKE_SOURCE_DIR}/dependencies/zlib-1.3.2
         # Windows system libraries
         ws2_32
         wsock32

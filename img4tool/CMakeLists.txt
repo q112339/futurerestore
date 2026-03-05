@@ -32,6 +32,7 @@ elseif("${CMAKE_C_COMPILER}" MATCHES "mingw")
         /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
         /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
         ${CMAKE_SOURCE_DIR}/dep_root/include
+        /usr/local/Cellar/openssl@1.1/1.1.1w/include
     )
     link_directories(
         ${CMAKE_BINARY_DIR}/external/libgeneral

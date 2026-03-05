@@ -26,23 +26,9 @@
 #include <libimobiledevice-glue/glue.h>
 
 #ifdef _WIN32
-typedef void* HANDLE;
+#include <windows.h>
 typedef HANDLE THREAD_T;
-#pragma pack(push, 8)
-struct _CRITICAL_SECTION_ST {
-	void* DebugInfo;
-	long LockCount;
-	long RecursionCount;
-	HANDLE OwningThread;
-	HANDLE LockSemaphore;
-#if defined(_WIN64)
-	unsigned __int64 SpinCount;
-#else
-	unsigned long SpinCount;
-#endif
-};
-#pragma pack(pop)
-typedef struct _CRITICAL_SECTION_ST mutex_t;
+typedef CRITICAL_SECTION mutex_t;
 typedef struct {
 	HANDLE sem;
 } cond_t;

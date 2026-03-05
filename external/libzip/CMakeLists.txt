@@ -26,6 +26,14 @@ option(ENABLE_ZSTD "Enable use of Zstandard" OFF)
 option(ENABLE_FDOPEN "Enable zip_fdopen, which is not allowed in Microsoft CRT secure libraries" ON)
 
 option(BUILD_TOOLS "Build tools in the src directory (zipcmp, zipmerge, ziptool)" ON)
+
+# Disable tools and ossfuzz for MinGW-w64 builds
+if("${CMAKE_C_COMPILER}" MATCHES "mingw")
+  set(BUILD_TOOLS OFF)
+  set(BUILD_OSSFUZZ OFF)
+  set(BUILD_REGRESS OFF)
+  set(BUILD_EXAMPLES OFF)
+endif()
 option(BUILD_REGRESS "Build regression tests" ON)
 option(BUILD_OSSFUZZ "Build fuzzers for ossfuzz" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
@@ -44,6 +52,14 @@ include(GNUInstallDirs)
 
 if(ENABLE_COMMONCRYPTO)
   check_include_files(CommonCrypto/CommonCrypto.h COMMONCRYPTO_FOUND)
+endif()
+
+# Add zlib include directory for MinGW-w64 builds
+if("${CMAKE_C_COMPILER}" MATCHES "mingw")
+  include_directories(/usr/local/x86_64-w64-mingw32/include)
+  # Use zlibstatic instead of z for MinGW-w64
+  set(ZLIB_LIBRARY /usr/local/x86_64-w64-mingw32/lib/libzlibstatic.a)
+  set(ZLIB_FOUND TRUE)
 endif()
 if(ENABLE_GNUTLS)
   find_package(Nettle 3.0)
@@ -195,19 +211,28 @@ int main(int argc, char *argv[]) { unsigned long x = FICLONERANGE; }" HAVE_FICLO
 
 test_big_endian(WORDS_BIGENDIAN)
 
-# For cross-compiling to Windows, use vcpkg libraries
+# For MinGW-w64 builds, bypass zlib finding
 if("${CMAKE_C_COMPILER}" MATCHES "mingw")
-    set(ZLIB_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
-    set(ZLIB_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libzlib.a")
     set(ZLIB_FOUND TRUE)
+    set(ZLIB_LIBRARY "z")
+    set(ZLIB_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/libzip/lib")
     # Create ZLIB::ZLIB target
-    add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+    add_library(ZLIB::ZLIB INTERFACE IMPORTED)
     set_target_properties(ZLIB::ZLIB PROPERTIES
-        IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+        INTERFACE_LINK_LIBRARIES "z"
         INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
     )
 else()
+    # Find zlib for native builds
     find_package(ZLIB 1.1.2 REQUIRED)
+    # Create ZLIB::ZLIB target if it doesn't exist
+    if(NOT TARGET ZLIB::ZLIB)
+        add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+        set_target_properties(ZLIB::ZLIB PROPERTIES
+            IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+        )
+    endif()
 endif()
 
 # so developers on systems where zlib is named differently (Windows, sometimes)

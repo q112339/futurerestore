@@ -31,6 +31,7 @@ elseif("${CMAKE_HOST_SYSTEM_NAME}" MATCHES "MSYS" OR "${CMAKE_HOST_SYSTEM_NAME}"
     set(PROJECT_CXX_FLAGS "${PROJECT_C_FLAGS}")
     include_directories(
         include
+        "${CMAKE_SOURCE_DIR}/external/libgeneral/include"
         "${CMAKE_SOURCE_DIR}/dep_root/include"
         /usr/local/x86_64-w64-mingw32/include
         ${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include
