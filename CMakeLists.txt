@@ -5,10 +5,28 @@ option(ASAN "Enable AddressSanatizer" OFF)
 option(NO_PKGCFG "Disable pkgconfig searching of libs, use dep_root for linking" OFF)
 #execute_process(COMMAND git submodule update --init --recursive WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+# Disable vcpkg for MinGW-w64 builds
+# set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+# set(VCPKG_TARGET_TRIPLET "x64-mingw-static" CACHE STRING "Vcpkg target triplet")
+
 project(futurerestore VERSION 2.0.0 LANGUAGES C CXX)
 
 # Set architecture to x86_64 explicitly
 set(ARCH "x86_64")
+
+# Find dependencies for MinGW-w64 builds
+if("${CMAKE_C_COMPILER}" MATCHES "mingw")
+    # Use vcpkg-installed dependencies
+    set(CURL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
+    set(CURL_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libcurl.a")
+    set(OPENSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
+    set(OPENSSL_CRYPTO_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libcrypto.a")
+    set(OPENSSL_SSL_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libssl.a")
+    set(ZLIB_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include")
+    set(ZLIB_LIBRARY "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib/libzlib.a")
+    include_directories(${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR})
+    link_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/lib)
+endif()
 
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin" AND NOT "${CMAKE_C_COMPILER}" MATCHES "mingw")
     set(CMAKE_OSX_ARCHITECTURES "${ARCH}")
@@ -34,8 +52,6 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux" AND NOT "${CMAKE_C_COMPILER}" MATC
 elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Windows" OR "${CMAKE_C_COMPILER}" MATCHES "mingw")
     set(PROJECT_C_FLAGS "-Wl,--allow-multiple-definition -pthread -fPIC -Wno-deprecated-declarations -Wno-int-conversion -DCURL_STATICLIB -Bstatic -O0")
     set(PROJECT_CXX_FLAGS "${PROJECT_C_FLAGS}")
-    # For MinGW-w64, use pkg-config to find libraries
-    find_package(PkgConfig REQUIRED)
 endif()
 if(ASAN)
     set(ASAN ON)
@@ -56,11 +72,17 @@ else()
     set(ASAN_FLAGS "")
 endif()
 
-# Only use pkg-config for non-MinGW-w64 builds
-if(NOT "${CMAKE_C_COMPILER}" MATCHES "mingw")
+# Remove problematic linker flags for MinGW-w64
+if("${CMAKE_C_COMPILER}" MATCHES "mingw")
+    set(CMAKE_EXE_LINKER_FLAGS "")
+    set(CMAKE_SHARED_LINKER_FLAGS "")
+    set(CMAKE_MODULE_LINKER_FLAGS "")
+endif()
+
+# Only use pkg-config if NO_PKGCFG is not set
+if(NOT NO_PKGCFG AND NOT "${CMAKE_C_COMPILER}" MATCHES "mingw")
     find_package(PkgConfig REQUIRED FATAL_ERROR)
     pkg_check_modules(DEPS REQUIRED
-            libzip
             zlib
             libpng16
             libcrypto
@@ -77,14 +99,21 @@ if(NOT "${CMAKE_C_COMPILER}" MATCHES "mingw")
     include_directories(${DEPS_INCLUDE_DIRS})
     link_directories(${DEPS_LIBRARY_DIRS})
 else()
-    # For MinGW-w64, use local headers
-    include_directories(${CMAKE_SOURCE_DIR}/dep_root/include)
+    # For MinGW-w64 or when NO_PKGCFG is set, use project-local headers
+    include_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-mingw-static/include)
 endif()
 
+# Add libzip from external directory
 if("${CMAKE_C_COMPILER}" MATCHES "mingw")
+    # For MinGW-w64 builds, use external/libzip
+    include_directories(${CMAKE_SOURCE_DIR}/external/libzip/lib)
+    # Disable zstd for MinGW builds
+    set(ENABLE_ZSTD OFF CACHE BOOL "Enable use of Zstandard" FORCE)
     set(CMAKE_C_FLAGS_MINSIZEREL_INIT "${ADDITIONAL_C_FLAGS} ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_MINSIZEREL_INIT}")
     set(CMAKE_C_FLAGS_RELEASE_INIT "${ADDITIONAL_C_FLAGS} ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE_INIT}")
 else()
+    # For native builds, use external/libzip
+    include_directories(${CMAKE_SOURCE_DIR}/external/libzip/lib)
     set(CMAKE_C_FLAGS_MINSIZEREL_INIT "${ADDITIONAL_C_FLAGS} -flto=thin ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_MINSIZEREL_INIT}")
     set(CMAKE_C_FLAGS_RELEASE_INIT "${ADDITIONAL_C_FLAGS} -flto=thin ${PROJECT_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE_INIT}")
 endif()
@@ -116,13 +145,28 @@ else()
     set(CMAKE_SHARED_LINKER_FLAGS "")
     set(CMAKE_MODULE_LINKER_FLAGS "")
     set(CMAKE_EXE_LINKER_FLAGS "")
+    # Add MinGW-specific include paths without removing standard includes
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/include")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/include")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32")
 endif()
 
 add_subdirectory(external/libgeneral)
 add_subdirectory(external/libplist)
+add_subdirectory(external/libimobiledevice)
+add_subdirectory(external/libirecovery)
+add_subdirectory(external/libimobiledevice-glue)
+add_subdirectory(external/libtatsu)
+add_subdirectory(external/libfragmentzip)
+add_subdirectory(external/libinsn)
+add_subdirectory(external/liboffsetfinder64)
 add_subdirectory(external/tsschecker)
 add_subdirectory(external/idevicerestore)
 add_subdirectory(external/libipatcher)
+add_subdirectory(external/libzip)
 add_subdirectory(img4tool)
 add_subdirectory(src)
 

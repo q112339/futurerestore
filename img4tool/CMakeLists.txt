@@ -27,14 +27,18 @@ elseif("${CMAKE_C_COMPILER}" MATCHES "mingw")
     set(PROJECT_CXX_FLAGS "${PROJECT_C_FLAGS}")
     include_directories(
         include
-        /usr/local/x86_64-w64-mingw32/include
-        /usr/local/include
+        /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/include
+        /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include
+        /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
+        /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
+        ${CMAKE_SOURCE_DIR}/dep_root/include
     )
     link_directories(
         ${CMAKE_BINARY_DIR}/external/libgeneral
         ${CMAKE_BINARY_DIR}/external/libplist
-        /usr/local/x86_64-w64-mingw32/lib
-        /usr/local/lib
+        /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/x86_64-w64-mingw32/lib
+        /usr/local/Cellar/mingw-w64/13.0.0_2/toolchain-x86_64/lib/gcc/x86_64-w64-mingw32/15.2.0
+        ${CMAKE_SOURCE_DIR}/dep_root/lib
     )
 endif()
 
@@ -45,14 +49,14 @@ add_library(img4tool STATIC
     img4tool/ASN1DERElement.cpp
     img4tool/img4tool.cpp
     img4tool/lzssdec.c
+    ../external/libgeneral/libgeneral/Mem.cpp
 )
 
 # Add include directories
 target_include_directories(img4tool PRIVATE
     include
-    /usr/local/include
-    /usr/local/Cellar/openssl@1.1/1.1.1w/include
-    /usr/local/Cellar/libplist/2.7.0/include
+    ${CMAKE_SOURCE_DIR}/dep_root/include
+    ${CMAKE_SOURCE_DIR}/external/libgeneral/include
 )
 
 # Add HAVE_PLIST definition
@@ -68,8 +72,7 @@ if("${CMAKE_C_COMPILER}" MATCHES "mingw")
     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static")
     # For MinGW-w64, we need to include the libgeneral header files
     target_include_directories(img4tool PRIVATE
-        /usr/local/include
-        /usr/local/Cellar/libplist/2.7.0/include
+        ${CMAKE_SOURCE_DIR}/dep_root/include
     )
     # Link against static libraries
     target_link_libraries(img4tool PRIVATE
@@ -77,6 +80,8 @@ if("${CMAKE_C_COMPILER}" MATCHES "mingw")
         ${CMAKE_BINARY_DIR}/external/libgeneral/libgeneral.a
         ${CMAKE_BINARY_DIR}/external/libplist/libplist-2.0.a
         -Wl,--no-whole-archive
+        ${CMAKE_SOURCE_DIR}/dep_root/lib/libcrypto.a
+        ${CMAKE_SOURCE_DIR}/dep_root/lib/libssl.a
         ws2_32
         iphlpapi
         setupapi

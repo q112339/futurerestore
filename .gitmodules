@@ -6,3 +6,7 @@
 	path = external/tsschecker
 	url = https://github.com/1Conan/tsschecker.git
 	branch = iOS16
+[submodule "external/tsschecker"]
+	path = external/tsschecker
+	url = https://github.com/1Conan/tsschecker.git
+	branch = iOS16
